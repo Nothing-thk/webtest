@@ -1,31 +1,500 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<projectDescription>
-	<name>teeeext</name>
-	<comment></comment>
-	<projects>
-	</projects>
-	<buildSpec>
-		<buildCommand>
-			<name>org.eclipse.jdt.core.javabuilder</name>
-			<arguments>
-			</arguments>
-		</buildCommand>
-		<buildCommand>
-			<name>org.eclipse.wst.common.project.facet.core.builder</name>
-			<arguments>
-			</arguments>
-		</buildCommand>
-		<buildCommand>
-			<name>org.eclipse.wst.validation.validationbuilder</name>
-			<arguments>
-			</arguments>
-		</buildCommand>
-	</buildSpec>
-	<natures>
-		<nature>org.eclipse.jem.workbench.JavaEMFNature</nature>
-		<nature>org.eclipse.wst.common.modulecore.ModuleCoreNature</nature>
-		<nature>org.eclipse.wst.common.project.facet.core.nature</nature>
-		<nature>org.eclipse.jdt.core.javanature</nature>
-		<nature>org.eclipse.wst.jsdt.core.jsNature</nature>
-	</natures>
-</projectDescription>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>GoalShare+ Offline Full Animated</title>
+<style>
+:root { --primary:#1976d2; --primary-dark:#115293; --bg:#f5f5f5; --card-bg:#fff; --text:#333; --border-radius:12px; }
+[data-theme="dark"] { --bg:#121212; --card-bg:#1e1e1e; --text:#eee; }
+body { font-family:'Noto Sans KR',sans-serif; margin:0; padding:0; background:var(--bg); color:var(--text); display:flex; flex-direction:column; align-items:center; transition:0.3s background,color; position:relative; overflow-x:hidden; }
+header { width:100%; background:var(--primary); color:white; padding:1.5rem; text-align:center; font-size:1.5rem; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.2); position:relative; }
+.top-buttons-left, .top-buttons-right { position:absolute; display:flex; gap:6px; align-items:center; }
+.top-buttons-left { top:30px; left:70px; }
+.top-buttons-right { top:30px; right:70px; }
+button { background:var(--primary); color:white; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:bold; transition:0.2s; }
+button:hover { background:var(--primary-dark); }
+input, select, textarea { width:100%; padding:10px; margin-top:10px; border-radius:8px; border:1px solid #ccc; font-size:1rem; box-sizing:border-box; }
+.container { background:var(--card-bg); margin-top:80px; padding:20px; border-radius:var(--border-radius); width:90%; max-width:400px; box-shadow:0 4px 15px rgba(0,0,0,0.1); transition:0.3s background,color; }
+.goal-item { display:flex; flex-direction:column; border-bottom:1px solid #eee; padding:6px 0; gap:4px; }
+.goal-text.done { text-decoration:line-through; color:#999; }
+.goal-buttons { display:flex; gap:4px; margin-top:4px; }
+.comment-list { margin-left:15px; margin-top:4px; }
+.comment-item { border-bottom:1px dashed #ccc; padding:2px 0; font-size:0.9rem; display:flex; align-items:center; gap:8px; }
+.comment-item img { width:34px; height:34px; border-radius:6px; object-fit:cover; cursor:pointer; border:1px solid #ddd; }
+
+/* 팝업 (모달) 기본 및 애니메이션 클래스 추가 */
+.popup {
+  position:fixed;
+  background:var(--card-bg);
+  border-radius:var(--border-radius);
+  box-shadow:0 4px 20px rgba(0,0,0,0.25);
+  padding:12px;
+  display:none;
+  z-index:50;
+  width:300px;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-45%) scale(0.95);
+  opacity:0;
+  transition:all 0.22s ease-out;
+}
+.popup.show {
+  display:block;
+  transform:translate(-50%,-50%) scale(1);
+  opacity:1;
+}
+.popup.hide {
+  transform:translate(-50%,-45%) scale(0.95);
+  opacity:0;
+}
+.popup h3 { margin-top:0; text-align:center; }
+.chat-messages { height:180px; overflow-y:auto; border-radius:8px; padding:8px; background:#f9f9f9; display:flex; flex-direction:column; }
+.chat-message { max-width:80%; margin:4px 0; padding:8px 12px; border-radius:15px; display:inline-block; word-wrap:break-word; font-size:0.95rem; opacity:0; transform:translateY(10px); animation:fadeIn 0.3s forwards; }
+.chat-message.me { background:var(--primary); color:white; align-self:flex-end; border-bottom-right-radius:0; }
+.chat-message.friend { background:#e0e0e0; color:#333; align-self:flex-start; border-bottom-left-radius:0; }
+.rank-list { max-height:220px; overflow-y:auto; border-radius:8px; padding:6px; margin-top:5px; border:1px solid #ccc; }
+.rank-item { padding:6px 0; border-bottom:1px solid #eee; font-weight:bold; }
+.profile-box img, #topProfileImg { width:50px; height:50px; border-radius:50%; object-fit:cover; cursor:pointer; border:2px solid var(--primary); }
+.popup button.close-btn { background:#999; padding:3px 6px; font-size:0.9rem; }
+
+/* 모달 배경 (새로 추가) */
+#modalBg { position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(3px); display:none; z-index:40; opacity:0; transition:opacity 0.22s; }
+#modalBg.show { display:block; opacity:1; }
+
+/* 라이트박스(이미지 확대) */
+#imgLightbox { display:none; z-index:60; position:fixed; inset:0; align-items:center; justify-content:center; }
+#imgLightbox.show { display:flex; }
+#imgLightbox .box { max-width:90%; max-height:90%; border-radius:10px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.6); }
+#imgLightbox img { width:100%; height:100%; object-fit:contain; background:#000; }
+
+/* 기타 */
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+@media(max-width:500px){.container{width:95%;padding:15px;}.popup{width:90%;}}
+</style>
+</head>
+<body data-theme="light">
+
+<header>
+🎯 GoalShare+ Offline Animated
+<div class="top-buttons-left">
+  <img id="topProfileImg" src="https://via.placeholder.com/50?text=U" onclick="toggleBox('profileBox')">
+  <button onclick="toggleBox('rankBox')">🏆 순위</button>
+</div>
+<div class="top-buttons-right">
+  <button onclick="toggleBox('friendsBox')">👥 친구</button>
+  <button onclick="toggleBox('chatBox')">💬 채팅</button>
+  <button onclick="toggleTheme()">🌙/☀️</button>
+  <button onclick="logout()">🚪 로그아웃</button>
+</div>
+</header>
+
+<!-- modal background -->
+<div id="modalBg"></div>
+
+<!-- 라이트박스 -->
+<div id="imgLightbox" onclick="closeImageLightbox()">
+  <div class="box"><img id="imgLightboxImg" src="" alt="확대 이미지"></div>
+</div>
+
+<div class="container" id="authBox">
+<h2 id="authTitle">로그인</h2>
+<input id="authName" placeholder="사용자 이름">
+<input id="authPw" type="password" placeholder="비밀번호">
+<div id="extraFields" style="display:none">
+  <input id="authQ" placeholder="비밀번호 힌트 질문">
+  <input id="authA" placeholder="힌트 답변">
+</div>
+<button id="authBtn" onclick="login()">로그인</button>
+<p id="authMsg" style="color:red"></p>
+<div style="margin-top:10px;text-align:center;">
+<button style="background:#999" onclick="toggleMode()">회원가입 / 로그인 전환</button>
+<button style="background:#999" id="resetBtn" style="display:none" onclick="showReset()">비밀번호 찾기</button>
+</div>
+</div>
+
+<!-- 팝업 박스 -->
+<div class="popup" id="profileBox">
+<h3>프로필 설정</h3>
+<img id="profileImgEdit" src="https://via.placeholder.com/50?text=U"><br>
+<input type="file" id="profileImgFile" accept="image/*" onchange="previewProfileImg(event)"><br>
+<input id="profileNameEdit" placeholder="이름"><br>
+<input id="profilePwEdit" type="password" placeholder="비밀번호"><br>
+<button onclick="saveProfile()">💾</button>
+<button class="close-btn" onclick="toggleBox('profileBox')">✖</button>
+</div>
+
+<div class="popup" id="friendsBox">
+<h3>친구 관리</h3>
+<input id="friendNameInput" placeholder="친구 이름">
+<button onclick="addFriend()">➕</button>
+<ul id="friendList"></ul>
+<button class="close-btn" onclick="toggleBox('friendsBox')">✖</button>
+</div>
+
+<div class="popup" id="chatBox">
+<h3>채팅</h3>
+<select id="chatSelect" onchange="selectChat()"></select>
+<div class="chat-messages" id="chatMsgs"></div>
+<input id="chatInput" placeholder="메시지 입력" onkeydown="if(event.key==='Enter'){sendChat();}">
+<button onclick="sendChat()">전송</button>
+<button class="close-btn" onclick="toggleBox('chatBox')">✖</button>
+</div>
+
+<div class="popup" id="rankBox">
+<h3>순위</h3>
+<div class="rank-list" id="rankList"></div>
+<button class="close-btn" onclick="toggleBox('rankBox')">✖</button>
+</div>
+
+<div class="popup" id="sharePopup">
+<h3>목표 공유</h3>
+<input type="text" id="shareLink" readonly style="width:100%">
+<button onclick="copyShareLink()">복사</button>
+<button class="close-btn" onclick="toggleBox('sharePopup')">✖</button>
+</div>
+
+<div class="container" id="appBox" style="display:none;">
+<h3>목표 설정</h3>
+<input id="goalInput" placeholder="목표 내용" onkeydown="if(event.key==='Enter'){addGoal();}">
+<input type="date" id="goalDateInput">
+<button onclick="addGoal()">➕ 목표 추가</button>
+<ul id="goalList"></ul>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let users = [], user = null, friends = {}, chats = {};
+let goalIdCounter = 0;
+
+// ---------- persistence ----------
+function saveData(){
+  try{
+    const data = { users, friends, chats, goalIdCounter };
+    localStorage.setItem('GoalShareData_v1', JSON.stringify(data));
+  }catch(e){ console.warn('저장 실패', e); }
+}
+function loadData(){
+  try{
+    const raw = localStorage.getItem('GoalShareData_v1');
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    users = data.users || [];
+    friends = data.friends || {};
+    chats = data.chats || {};
+    goalIdCounter = data.goalIdCounter || 0;
+  }catch(e){ console.warn('불러오기 실패', e); }
+}
+
+// ---------- 회원가입/로그인 ----------
+function toggleMode(){
+  if($('authTitle').innerText==='로그인'){
+    $('authTitle').innerText='회원가입';
+    $('authBtn').innerText='회원가입';
+    $('extraFields').style.display='block';
+  }else{
+    $('authTitle').innerText='로그인';
+    $('authBtn').innerText='로그인';
+    $('extraFields').style.display='none';
+  }
+  $('authMsg').innerText='';
+}
+
+function login(){
+  let name=$('authName').value.trim();
+  let pw=$('authPw').value.trim();
+  if($('authTitle').innerText==='로그인'){
+    let u=users.find(x=>x.name===name && x.pw===pw);
+    if(u){ 
+      user=u; 
+      $('appBox').style.display='block';
+      $('authBox').style.display='none'; 
+      // 로그인 후 입력 초기화
+      $('goalInput').value=''; $('goalDateInput').value=''; $('goalList').innerHTML='';
+      renderGoals(); renderRank();
+      renderFriends(); updateChatSelect();
+      $('topProfileImg').src = user.img || $('topProfileImg').src;
+    } else {
+      $('authMsg').innerText='계정이 없거나 비밀번호가 틀립니다'; 
+      $('resetBtn').style.display='inline-block';
+    }
+  } else {
+    if(users.find(x=>x.name===name)){
+      $('authMsg').innerText='이미 존재하는 사용자'; return;
+    }
+    let q=$('authQ').value.trim(), a=$('authA').value.trim();
+    if(!name||!pw||!q||!a){$('authMsg').innerText='모든 항목 입력필요';return;}
+    const newUser = {name,pw,goal:[],q,a,img:'https://via.placeholder.com/50?text=U'};
+    users.push(newUser);
+    saveData();
+    $('authMsg').innerText='회원가입 완료'; toggleMode();
+  }
+}
+
+function logout(){
+  user=null; $('appBox').style.display='none'; $('authBox').style.display='block';
+  $('goalList').innerHTML=''; $('friendList').innerHTML=''; $('chatMsgs').innerHTML='';
+  $('chatSelect').innerHTML='';
+}
+
+// --- 목표 ---
+function addGoal(){
+  if(!user) return alert('로그인 필요');
+  let text=$('goalInput').value.trim();
+  let date=$('goalDateInput').value;
+  if(!text) return;
+  let goal={id:goalIdCounter++,text,date,dateAdded:new Date().toISOString(),done:false,comments:[]};
+  user.goal.push(goal); $('goalInput').value=''; $('goalDateInput').value='';
+  renderGoals();
+  renderRank();
+  saveData();
+}
+
+function editGoal(id){
+  let g = user.goal.find(x=>x.id===id);
+  if(!g) return;
+  let newText = prompt('목표 수정:', g.text);
+  if(newText === null || newText.trim() === '') return;
+  let newDate = prompt('목표 날짜 수정 (YYYY-MM-DD):', g.date || '');
+  if(newDate === null) return;
+  g.text = newText.trim();
+  g.date = newDate.trim();
+  renderGoals(); renderRank();
+  saveData();
+}
+
+function renderGoals(){
+  if(!user) return;
+  $('goalList').innerHTML='';
+  user.goal.forEach(g=>{
+    let li=document.createElement('li'); li.className='goal-item';
+    li.innerHTML=`<span class="goal-text ${g.done?'done':''}">${g.text} 📅${g.date||''}</span>
+    <div class="goal-buttons">
+      <button onclick="toggleDone(${g.id})">✅</button>
+      <button onclick="delGoal(${g.id})">🗑</button>
+      <button onclick="showShare(${g.id})">🔗</button>
+      <button onclick="addComment(${g.id})">💬</button>
+      <button onclick="editGoal(${g.id})">✏️</button>
+    </div>
+    <ul class="comment-list" id="comment-${g.id}"></ul>`;
+    $('goalList').appendChild(li);
+    renderComments(g.id);
+  });
+}
+
+function toggleDone(id){
+  let g=user.goal.find(x=>x.id===id); if(!g) return;
+  g.done=!g.done; renderGoals(); renderRank(); saveData();
+}
+
+function delGoal(id){
+  user.goal=user.goal.filter(x=>x.id!==id); renderGoals(); renderRank(); saveData();
+}
+
+// --- 댓글 (텍스트 + 이미지) ---
+function addComment(id){
+  let g = user.goal.find(x=>x.id===id);
+  if(!g) return;
+  let text = prompt('댓글 내용 입력:');
+  if(text === null || text.trim() === '') return;
+  if(!g.comments) g.comments = [];
+
+  // 이미지 첨부 여부 묻기
+  const attach = confirm('댓글에 이미지를 첨부하시겠습니까?');
+  if(attach){
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if(!file){
+        // 선택 취소
+        g.comments.push({text, img: user.img});
+        renderComments(id);
+        saveData();
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = ev => {
+        g.comments.push({text, img: ev.target.result});
+        renderComments(id);
+        saveData();
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  } else {
+    g.comments.push({text, img: user.img});
+    renderComments(id);
+    saveData();
+  }
+}
+
+function renderComments(id){
+  let g = user.goal.find(x=>x.id===id);
+  let ul = $('comment-'+id); if(!ul) return; ul.innerHTML='';
+  if(!g.comments) return;
+  g.comments.forEach((c, idx)=>{
+    let li=document.createElement('li'); li.className='comment-item';
+    // 이미지 클릭 시 라이트박스 열기: openImageLightbox
+    li.innerHTML = `${c.img?'<img src="'+c.img.replace(/"/g,'&quot;')+'" alt="comment image" onclick="openImageLightbox(\''+encodeURIComponent(c.img)+'\')">':''}
+      <div style="flex:1">${c.text}</div>`;
+    ul.appendChild(li);
+  });
+}
+
+// 라이트박스 열기/닫기
+function openImageLightbox(dataUrlEncoded){
+  const src = decodeURIComponent(dataUrlEncoded);
+  $('imgLightboxImg').src = src;
+  $('imgLightbox').classList.add('show');
+  // ensure modal background visible underneath
+  $('modalBg').classList.add('show');
+}
+function closeImageLightbox(){
+  $('imgLightbox').classList.remove('show');
+  // remove modalBg if no other popup open
+  setTimeout(()=>{
+    if(!document.querySelector('.popup.show')) $('modalBg').classList.remove('show');
+  }, 100);
+}
+
+// --- 목표 공유 ---
+function showShare(id){
+  let g=user.goal.find(x=>x.id===id);
+  $('shareLink').value = location.href + '?share=' + encodeURIComponent(g.text);
+  toggleBox('sharePopup');
+}
+function copyShareLink(){ $('shareLink').select(); document.execCommand('copy'); alert('복사 완료'); }
+
+// --- 친구 ---
+function addFriend(){
+  if(!user) return alert('로그인 필요');
+  let n=$('friendNameInput').value.trim(); if(!n) return;
+  if(!friends[user.name]) friends[user.name]=[];
+  friends[user.name].push(n); $('friendNameInput').value=''; renderFriends(); updateChatSelect(); saveData();
+}
+function renderFriends(){
+  let list=$('friendList'); list.innerHTML='';
+  (friends[user.name]||[]).forEach(f=>{
+    let li=document.createElement('li'); li.innerText=f;
+    list.appendChild(li);
+  });
+}
+function updateChatSelect(){
+  const sel = $('chatSelect');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">친구 선택</option>';
+  (friends[user.name]||[]).forEach(f=>{
+    const opt = document.createElement('option'); opt.value = f; opt.innerText = f; sel.appendChild(opt);
+  });
+}
+
+// --- 채팅 ---
+function selectChat(){
+  let friend=$('chatSelect').value; $('chatMsgs').innerHTML='';
+  if(!friend) return;
+  let msgs=chats[user.name+'_'+friend]||[];
+  msgs.forEach(m=>addChatMsg(m.text,m.from===user.name?'me':'friend'));
+}
+function sendChat(){
+  let friend=$('chatSelect').value; if(!friend) return;
+  let text=$('chatInput').value.trim(); if(!text) return; $('chatInput').value='';
+  if(!chats[user.name+'_'+friend]) chats[user.name+'_'+friend]=[];
+  chats[user.name+'_'+friend].push({text,from:user.name}); addChatMsg(text,'me'); saveData();
+}
+function addChatMsg(text,className){
+  let msg=document.createElement('div'); msg.className='chat-message '+className; msg.innerText=text;
+  $('chatMsgs').appendChild(msg); $('chatMsgs').scrollTop=$('chatMsgs').scrollHeight;
+}
+
+// --- 순위 ---
+function renderRank(){
+  let list=$('rankList'); list.innerHTML='';
+  let sorted = users.map(u=>({name:u.name, done:u.goal.filter(g=>g.done).length})).sort((a,b)=>b.done-a.done);
+  sorted.forEach(u=>{
+    let li=document.createElement('div'); li.className='rank-item';
+    li.innerText=`${u.name}: ${u.done} ✅`;
+    list.appendChild(li);
+  });
+}
+
+// --- 팝업: 부드러운 열기/닫기(모달 배경 포함) ---
+function toggleBox(id){
+  const box = $(id);
+  const bg = $('modalBg');
+  const isOpen = box.classList.contains('show');
+
+  // 닫기 처리: 열린 팝업 모두 hide 애니메이션 실행 후 제거
+  document.querySelectorAll('.popup.show').forEach(p=>{
+    p.classList.add('hide');
+    setTimeout(()=> p.classList.remove('show','hide'), 220);
+  });
+  bg.classList.remove('show');
+
+  if(!isOpen){
+    box.classList.add('show');
+    bg.classList.add('show');
+  }
+
+  // 배경 클릭으로 닫기 (부드럽게)
+  bg.onclick = () => {
+    box.classList.add('hide');
+    setTimeout(()=>{
+      box.classList.remove('show','hide');
+      bg.classList.remove('show');
+    }, 220);
+  };
+}
+
+// --- 프로필 편집 ---
+function previewProfileImg(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  $('profileImgEdit').src = URL.createObjectURL(file);
+}
+function saveProfile(){
+  if(!user) return;
+  user.img = $('profileImgEdit').src;
+  user.name = $('profileNameEdit').value || user.name;
+  $('topProfileImg').src = user.img;
+  toggleBox('profileBox'); renderGoals(); renderRank();
+  renderFriends(); updateChatSelect();
+  saveData();
+}
+
+// --- 테마 ---
+function toggleTheme(){
+  document.body.dataset.theme = document.body.dataset.theme==='light' ? 'dark' : 'light';
+}
+
+// --- 전역 키 처리: Esc로 팝업 닫기 ---
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape'){
+    // 먼저 라이트박스 닫기
+    if($('imgLightbox') && $('imgLightbox').classList.contains('show')){
+      closeImageLightbox();
+      return;
+    }
+    // 모든 팝업에 hide 적용
+    document.querySelectorAll('.popup.show').forEach(p=>{
+      p.classList.add('hide');
+      setTimeout(()=> p.classList.remove('show','hide'), 220);
+    });
+    $('modalBg').classList.remove('show');
+  }
+});
+
+// --- 초기화 (데이터 불러오기 포함) ---
+function init(){
+  loadData();
+  // UI 초기값
+  $('profileNameEdit').value='User';
+  $('profileImgEdit').src='https://via.placeholder.com/50?text=U';
+  // If there is a logged-in 'user' saved in storage? We do not auto-login to avoid changing original flow.
+  // But ensure UI lists are ready if user logs in later.
+}
+init();
+</script>
+</body>
+</html>
